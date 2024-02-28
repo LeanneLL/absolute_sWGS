@@ -3,27 +3,36 @@
 Currently, this repository contains scripts designed for two primary purposes:
 
 1. Generating solutions for diploid and cellularity using Rascal.
-2. Converting relative Copy Number Alterations (CNA) to absolute values by manually setting diploid and cellularity values.
+2. Converting relative Copy Number Alterations (CNA) to absolute values by manually setting diploid and cellularity parameters.
+
+## Directory Structure
+
+- **Data:** The input `.rds` data files generated from QDNAseq are located in the `./data` folder.
+- **Scripts:** 
+  - Bash scripts for processing are found in `./scripts/bash`.
+  - Corresponding R scripts are located in `./scripts/R`.
 
 ## Getting Started
 
 ### Preparation
 
-- The input `.rds` data files, directly generated from QDNAseq, are located in the `./data` folder.
-- Prepare a `.txt` file containing the sequence IDs of the samples you wish to process.
+Before beginning, ensure you have a `.txt` file with the sequence IDs of the samples you plan to process. The input data should be placed in the `./data` directory.
 
 ### Processing Steps
 
-1. **Extract QDNAseq Copy Number Variations (CNVs):**  
-   Run `extract_qdna_cnv_givenID.sh` to extract bin-size and segmented copy number, combining them into a CSV file named `*_output.csv`.
+1. **Extract QDNAseq CNVs:**
+   - To extract bin-size and segmented copy number data, run the script `extract_qdna_cnv_givenID.sh` found in `./scripts/bash`. This script combines the extracted data into a CSV file named `*_output.csv`.
+   - The corresponding R script used in this step is located at `./scripts/R`.
 
 2. **Generate Solutions for Diploid and Cellularity:**
-   - To use Rascal for generating solutions for diploid and cellularity, run `fit_absolute_copy_numbers.sh` using `*_output.csv` as input.
+   - Use `fit_absolute_copy_numbers.sh` from `./scripts/bash` with `*_output.csv` to generate solutions for diploid and cellularity using Rascal.
+   - The R script for this process can be found in `./scripts/R`.
 
-3. **Convert Relative CAN to Absolute Values:**
-   - If you wish to convert relative CAN to absolute by manually setting diploid and cellularity values, use `relative_to_absolute_given_para.sh` with `*_output.csv`.
+3. **Convert Relative CNA to Absolute Values:**
+   - To manually set diploid and cellularity values and convert relative CNA to absolute, run `relative_to_absolute_given_para.sh` from `./scripts/bash` with `*_output.csv`.
+   - This step also utilizes an R script located in `./scripts/R`.
 
 ## Results
 
-- Examples of `*_output.csv` and the sequential results can be found in the `./results` folder.
+You can find examples of `*_output.csv` and the results generated at each step in the `./results` folder.
 
