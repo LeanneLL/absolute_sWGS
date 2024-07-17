@@ -18,7 +18,7 @@ qclim_frac_genome_altered_lim = 0.15
 qclim_purity = 0.1
 
 # Flags to consider reviewing a chosen solution
-flaglim_allele_fit = 60
+flaglim_allele_fit = 50
 flaglim_n_segments = 350
 
 # Functions--------------------------------------------------------------------------------------------------------------------
@@ -192,7 +192,7 @@ calc.wgii <- function(segments, input = c('ascat', 'refphase', 'auto_qc'),
 
 
 assess_solution <- function( segments, homdel_lim = 0.8, subcl_lim = 0.25, tight50CCF_lim = 0.4, tight_clonal_lim = 0.15, bin_size = 10000, 
-                             loose_clonal_lim = 1.2, abs_tight_cn_lim = 3, strict_loh_lim = 1.5, imbalence_lim = 0.1){
+                             loose_clonal_lim = 1.2, abs_tight_cn_lim = 3, strict_loh_lim = 1.2, imbalence_lim = 0.1){
 
 
   start_col <- 'start' ; end_col <- 'end' ; total_cn_col <- 'cnTotal'
@@ -216,7 +216,7 @@ assess_solution <- function( segments, homdel_lim = 0.8, subcl_lim = 0.25, tight
   allelle_cns <- melt(segments, id.vars = c('segment_len', sample_col), measure.vars = 'total_raw',
                       variable.name= 'allele', value.name = 'raw_cn' )
   allelle_cns[ raw_cn > 0.5, int_diff := raw_cn / round(raw_cn) ]
-  allelle_cns[, prob_clonal := abs(int_diff) < loose_clonal_lim & raw_cn < 4.5 ]
+  allelle_cns[, prob_clonal := abs(int_diff) < loose_clonal_lim & raw_cn < 6 ]
 
   # Devide into bins and take a median so we're more resistant to outliers (additional segments that switch from 'probably clonal' in solutions with slightly shifted pliody)
   allelle_cns[, n_bins := round(segment_len / bin_size) ]
@@ -224,7 +224,7 @@ assess_solution <- function( segments, homdel_lim = 0.8, subcl_lim = 0.25, tight
                               .(integer_offset = median( rep(int_diff, n_bins), na.rm=T ) ),
                               by = get(sample_col) ]
   setnames(int_offsets, c('get'), c(sample_col))
-  segments <- merge( segments, int_offsets )
+  segments <- merge( segments, int_offsets, all.x = TRUE )
 
   segments[, total_cor := total_raw / integer_offset ]
   segments[, is_tight_50CCF := (abs(total_cor - round(total_cor)) > tight50CCF_lim & total_cor < 5) ] 
@@ -275,7 +275,8 @@ select_best_solution <- function(seg_files){
   sample_qc_metrics <- assess_solution( segs )
   setnames(sample_qc_metrics, 'sample', 'sample_sol')
   cin_metrics <- calc.wgii( segs, input = 'auto_qc' )
-  
+  setnames(cin_metrics, 'sample', 'sample_sol')
+
   # make a goodness of fit score
   # average deviation from interger (limited to 0.2 max) - as per Vanloo et al ASCAT paper
   segs[, int_deviation := abs(cnTotal - round(cnTotal)) ]
@@ -286,10 +287,13 @@ select_best_solution <- function(seg_files){
   print(nrow(cin_metrics))
   print(nrow(gof))
   # Bind together
-  cn_qc <- cbind( sample_qc_metrics,  
-                  cin_metrics[, c("gii", "wgii")], 
-                  gof[,c("goodness_of_fit")], 
-                  unique(segs[,.(sample = sample_id, ploidy, purity = cellularity, num_gds)]) )
+  cn_qc <- merge( sample_qc_metrics,  
+                  cin_metrics, by = 'sample_sol' )
+  cn_qc <- merge( cn_qc,  
+                  gof, by = 'sample_sol' )
+  cn_qc <- merge( cn_qc,  
+                  unique(segs[,.(sample_sol, sample = sample_id, ploidy, purity = cellularity, num_gds)]), by = 'sample_sol' ) 
+   
   # make a logical order
   cn_qc <- cn_qc[, c(15, 1:14, 16:18)] 
   
@@ -339,6 +343,6 @@ select_best_solution <- function(seg_files){
   cn_qc[ (selected_solution_auto), flag_segmentation := N_segments > flaglim_n_segments ]
   
   cn_qc[ (selected_solution_auto), flag_poor_solution :=  flag_segmentation | flag_goodness_of_fit ]
-  
+
   return(cn_qc)
 }
