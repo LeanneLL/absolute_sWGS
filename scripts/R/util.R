@@ -1,13 +1,12 @@
-setwd('C:/Users/lw748/OneDrive - University of Cambridge/sWGS/QDNASeq_and_model_training/RASCAL/github_rascal')
+setwd('C:/Users/lw748/OneDrive - University of Cambridge/sWGS/QDNASeq_and_model_training/RASCAL/back_up/scripts/R/')
 
-source('./scripts/R/relative_to_absolute_given_para.R')
-source('./scripts/R/auto_qc.R')
-source('./scripts/R/find_acceptable_solutions.R')
+source('relative_to_absolute_given_para.R')
+source('auto_qc.R')
+source('find_acceptable_solutions.R')
 
-input_dir <- '/path/to/_output.csv/'
-#input_dir <- "./results/NDBE/SLX-10722_SLX-11823.D701_D506"
+#input_dir <- '/path/to/_output.csv/'
+input_dir <- "C:/Users/lw748/OneDrive - University of Cambridge/sWGS/QDNASeq_and_model_training/RASCAL/back_up/results/imc"
 file_list <- list.files(input_dir, pattern = "^binsize_500\\.copy_number_segmented_output\\.csv$", full.names = TRUE, recursive = TRUE)
-
 
 # Output the solutions from RASCAL-------------------------------------------------------------------------------------------------------
 ## Acceptable solutions from RASCAL
@@ -20,10 +19,10 @@ file_list <- list.files(input_dir, pattern = "^binsize_500\\.copy_number_segment
 # Convert relative cna from QDNASeq to absolute using manually set solutions------------------------------------------------------------------------------
 
 # Set the ploidy and cellularity values
-#ploidy_list <- seq(1, 2, by=1)
-#cellularity_list <- seq(0.05, 1, by=0.05)
-ploidy_list <- seq( 1.5, 6, by = 0.1 )
-cellularity_list <- c(0.025, 0.05, 0.075, seq(0.1, 1, by=0.05))
+ploidy_list <- seq(1, 2, by=1)
+cellularity_list <- seq(0.05, 1, by=0.05)
+#ploidy_list <- seq( 1.5, 6, by = 0.1 )
+#cellularity_list <- c(0.025, 0.05, 0.075, seq(0.1, 1, by=0.05))
 
 # Apply the function to each file
 results_list <- lapply(file_list, function(file_path) {
@@ -47,9 +46,11 @@ for (i in seq_along(results_list)) {
 seg_file_list <- list.files(input_dir, pattern = "^absolute_segments_binsize_500\\.copy_number_segmented_output\\.csv$", full.names = TRUE, recursive = TRUE)
 bin_file_list <- list.files(input_dir, pattern = "^absolute_binsize_500\\.copy_number_segmented_output\\.csv$", full.names = TRUE, recursive = TRUE)
 
+i = 19
 lapply(1:length(seg_file_list), function(i) {
   print(paste("Processing iteration:", i))
   cn_qc <- select_best_solution(seg_file_list[i])
+  #cn_qc <- fread(paste0(dirname(seg_file_list[i]), "/auto_solution_choice_auto_qc.tsv"))
 
   ### Check if the sample is so low purity that we need to set a max possible purity ###
   # Check to see if there is any segment with a copy number change giving us signal to determine the purity
@@ -69,7 +70,8 @@ lapply(1:length(seg_file_list), function(i) {
   bins_segs <- unique( bins[ !is.na(segmented), .(sample, p_value, segmented, size = .N * 500000), by = segname ] )
   bins_segs[, q_value := p.adjust(p_value, method = 'bonferroni', n = .N), by = sample]
   bins_segs[, diff := abs(1 - segmented)]
-  bins_segs[, use_seg := size > 20000000 & diff > 0.1 ]
+  #bins_segs[, use_seg := size > 20000000 & diff > 0.1 ]
+  bins_segs[, use_seg := diff > 0.1 ]
   low_purity <- bins_segs[, !any( q_value[(use_seg)] < 0.01, rm.na=T ) | !any(use_seg), sample]
   low_purity_value <- low_purity$V1[1]
   
@@ -89,6 +91,7 @@ lapply(1:length(seg_file_list), function(i) {
     output_path_forced_sol_segmented <- paste0(dirname(file_list[i]), '/forced_sol_segments_',i, basename(file_list[i]))
     write.csv(results_list_low$results_df, output_path_forced_sol_bin, row.names = FALSE)
     write.csv(results_list_low$results_df_segments, output_path_forced_sol_segmented, row.names = FALSE)
+    
     
     }
 

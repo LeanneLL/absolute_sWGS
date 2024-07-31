@@ -16,6 +16,7 @@ qclim_frac_gn_homdel = 0.025
 qclim_LOH_gII_ratio = 0.01
 qclim_frac_genome_altered_lim = 0.15
 qclim_purity = 0.1
+qclim_clonal_cn_change_size = 20000000
 
 # Flags to consider reviewing a chosen solution
 flaglim_allele_fit = 50
@@ -230,7 +231,10 @@ assess_solution <- function( segments, homdel_lim = 0.8, subcl_lim = 0.25, tight
   segments[, is_tight_50CCF := (abs(total_cor - round(total_cor)) > tight50CCF_lim & total_cor < 5) ] 
   segments[, is_tight_clonal := (abs(total_cor - round(total_cor)) < tight_clonal_lim & total_cor < 4) ] 
 
- 
+  # Calculate max size of the biggest clonal CN change
+  segments[, is_pliody := round(total_raw, 0) == round( mean(total_raw[is_tight_clonal]), 0 ), by = get(sample_col)] #?
+  max_clonal_seg <- segments[ (is_tight_clonal & !is_pliody), .(max_abberant_clonal_segment = max(segment_len)), by = eval(sample_col)]
+
   # Look at whether odd CNs are presented excluding >=5 as high CNs are noiser and lower should always be present
   segments[, total_diff_from_odd := min(abs(total_raw - c(1, 3))), 1:nrow(segments) ]
   
@@ -250,6 +254,8 @@ assess_solution <- function( segments, homdel_lim = 0.8, subcl_lim = 0.25, tight
                       biggest_homdel_Mb = ifelse( any(total_raw < homdel_lim), max(segment_len[total_raw < homdel_lim]) / 1000000, 0)), 
                    by = get(sample_col) ]
   setnames(out, c('get'), c(sample_col))
+
+  out <- merge( out, max_clonal_seg, on = sample_col)
   
   return( out )
 }
@@ -295,7 +301,7 @@ select_best_solution <- function(seg_files){
                   unique(segs[,.(sample_sol, sample = sample_id, ploidy, purity = cellularity, num_gds)]), by = 'sample_sol' ) 
    
   # make a logical order
-  cn_qc <- cn_qc[, c(15, 1:14, 16:18)] 
+  cn_qc <- cn_qc[, c(16, 1:15, 17:19)] 
   
   # Choose a solution ufor each region -------------------------------------------------------------------------------------
   
@@ -303,9 +309,10 @@ select_best_solution <- function(seg_files){
   cn_qc[, `:=`( homdel_size_fail = biggest_homdel_Mb > qclim_biggest_homdel_Mb,
                 homdel_frac_fail = frac_homdel > qclim_frac_gn_homdel,
                 loh_fail = floh_strict / gii < qclim_LOH_gII_ratio,
-                purity_fail = purity < qclim_purity | purity > qclim_purity_low_wGII_cn_pass & wgii < qclim_wGII_high_purity_cn_pass ) ]
+                purity_fail = purity < qclim_purity | purity > qclim_purity_low_wGII_cn_pass & wgii < qclim_wGII_high_purity_cn_pass,
+                size_clonal_cn_change_fail = max_abberant_clonal_segment < qclim_clonal_cn_change_size ) ]
   
-  cn_qc[, bio_plausible_sol := !( homdel_size_fail | homdel_frac_fail | loh_fail | purity_fail ) ]
+  cn_qc[, bio_plausible_sol := !( homdel_size_fail | homdel_frac_fail | loh_fail | purity_fail | size_clonal_cn_change_fail ) ]
   
   # Now lets make a solution score for the solutions
   
