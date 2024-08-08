@@ -1,1 +1,0 @@
-"id" "ploidy" "cellularity" "distance"
