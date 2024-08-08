@@ -1,2 +1,0 @@
-sample,ploidy,cellularity,distance
-SLX-10722_SLX-11823.D701_D504,2,1,0.053
