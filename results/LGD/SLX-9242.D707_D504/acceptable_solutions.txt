@@ -1,2 +1,0 @@
-"id" "ploidy" "cellularity" "distance"
-"1" 100 1.1 1 0.111275788518266
